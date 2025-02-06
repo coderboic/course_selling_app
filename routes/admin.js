@@ -4,12 +4,14 @@ const { adminModel,courseModel}=require("../mongo");
 const jwt=require("jsonwebtoken");
 const { JWT_ADMIN_PASSWORD }=require("../config");
 const { adminMiddleware }=require("../middleware/admin");
-
+const bcrypt=require("bcrypt");
 adminRouter.post("/signup",async function(req,res){
     const {username,password,firstName,LastName}=req.body;
+    const saltRounds=10;
+    const hashedPassword=await bcrypt.hash(password,saltRounds);
     await adminModel.create({
         username:username,
-        password:password,
+        password:hashedPassword,
         firstName:firstName,
         LastName:LastName
     })
@@ -18,10 +20,18 @@ adminRouter.post("/signup",async function(req,res){
 adminRouter.post("/signin",async function(req,res){
     const {username,password}=req.body;
     const admin_up=await adminModel.findOne({
-        username:username,
-        password:password
+        username:username
     })
+    if(!admin_up){
+        return res.status(401).json({message:"Invalid credentials"});
+    }
     if(admin_up){
+        const isValid=await bcrypt.compare(password,admin_up.password);
+        if(!isValid){
+            return res.status(401).json({
+                message:"invalid credentials"
+            })
+        }
         const token=jwt.sign({
             id:admin_up._id
         },JWT_ADMIN_PASSWORD);

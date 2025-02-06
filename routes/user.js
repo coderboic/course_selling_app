@@ -1,14 +1,16 @@
 const {Router}=require("express");
 const userRouter=Router();
+const bcrypt=require("bcrypt");
 const {userModel,courseModel, purchaseModel}=require("../mongo");
 const jwt=require("jsonwebtoken");
 const {JWT_USER_PASSWORD}=require("../config");
 const { userMiddleware}=require("../middleware/user");
 userRouter.post("/signup",async function(req,res){
     const {username,password,firstName,lastName}=req.body;
+    const hashedPassword=await bcrypt.hash(password,10);
     const course=await userModel.create({
         username,
-        password,
+        password:hashedPassword,
         firstName,
         lastName
     })
@@ -18,13 +20,18 @@ userRouter.post("/signup",async function(req,res){
 })
 userRouter.post("/signin",async function(req,res){
     const {username,password}=req.body;
-    const course=userModel.findOne({
-        username:username,
-        password:password
+    const user=userModel.findOne({
+        username,
     })
-    if(course){
+    if(user){
+        const veri=bcrypt.compare(password,user.password);
+        if(!veri){
+            return res.status(403).json({
+                message:"incorrect credentials"
+            })
+        }
         const toke=jwt.sign({
-            id:course._id
+            id:user._id
         },JWT_USER_PASSWORD);
         res.json({
             message:"successfully singed in ",
