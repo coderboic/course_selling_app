@@ -5,7 +5,26 @@ const jwt=require("jsonwebtoken");
 const { JWT_ADMIN_PASSWORD }=require("../config");
 const { adminMiddleware }=require("../middleware/admin");
 const bcrypt=require("bcrypt");
+const { z }=require("zod");
+const adminsignupSchema=z.object({
+    username:z.string().min(3),
+    password:z.string().min(8),
+    firstName:z.string().min(4),
+    LastName:z.string().min(4)
+})
+const adminsigninSchema=z.object({
+    username:z.string().min(3),
+    password:z.string().min(8),
+})
 adminRouter.post("/signup",async function(req,res){
+    try{
+        adminsignupSchema.safeParse(req.body);
+    }catch(e){
+        return res.status(400).json({
+            message:"invalid inputs",
+            errors:e.errors
+        });
+    }
     const {username,password,firstName,LastName}=req.body;
     const saltRounds=10;
     const hashedPassword=await bcrypt.hash(password,saltRounds);
@@ -18,6 +37,14 @@ adminRouter.post("/signup",async function(req,res){
     res.send("successfully signed up the admin");
 })
 adminRouter.post("/signin",async function(req,res){
+    try{
+        adminsigninSchema.safeParse(req.body);
+    }catch(e){
+        res.status(400).json({
+            message:"incorrect details",
+            errors:e.errors
+        })
+    }
     const {username,password}=req.body;
     const admin_up=await adminModel.findOne({
         username:username
